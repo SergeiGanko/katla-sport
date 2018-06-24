@@ -11,6 +11,8 @@ using Swashbuckle.Swagger.Annotations;
 
 namespace KatlaSport.WebApi.Controllers
 {
+    using KatlaSport.Services;
+
     [ApiVersion("1.0")]
     [RoutePrefix("api/hives")]
     [EnableCors(origins: "*", headers: "*", methods: "*")]
@@ -31,7 +33,7 @@ namespace KatlaSport.WebApi.Controllers
         [Route("")]
         [SwaggerResponse(HttpStatusCode.OK, Description = "Returns a list of hives.", Type = typeof(HiveListItem[]))]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> GetHives()
+        public async Task<IHttpActionResult> GetHivesAsync()
         {
             var hives = await _hiveService.GetHivesAsync();
             return Ok(hives);
@@ -42,10 +44,22 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.OK, Description = "Returns a hive.", Type = typeof(Hive))]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> GetHive(int hiveId)
+        public async Task<IHttpActionResult> GetHiveAsync(int hiveId)
         {
-            var hive = await _hiveService.GetHiveAsync(hiveId);
-            return Ok(hive);
+            if (hiveId < 1)
+            {
+                return BadRequest($"Argument {nameof(hiveId)} must be greater than zero.");
+            }
+
+            try
+            {
+                var hive = await _hiveService.GetHiveAsync(hiveId);
+                return Ok(hive);
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         [HttpGet]
@@ -53,10 +67,22 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.OK, Description = "Returns a list of hive sections for specified hive.", Type = typeof(HiveSectionListItem))]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> GetHiveSections(int hiveId)
+        public async Task<IHttpActionResult> GetHiveSectionsAsync(int hiveId)
         {
-            var hive = await _hiveSectionService.GetHiveSectionsAsync(hiveId);
-            return Ok(hive);
+            if (hiveId < 1)
+            {
+                return BadRequest($"Argument {nameof(hiveId)} must be greater than zero.");
+            }
+
+            try
+            {
+                var hive = await _hiveSectionService.GetHiveSectionsAsync(hiveId);
+                return Ok(hive);
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         [HttpPut]
@@ -64,10 +90,22 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.NoContent, Description = "Sets deleted status for an existed hive.")]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> SetStatus([FromUri] int hiveId, [FromUri] bool deletedStatus)
+        public async Task<IHttpActionResult> SetStatusAsync([FromUri] int hiveId, [FromUri] bool deletedStatus)
         {
-            await _hiveService.SetStatusAsync(hiveId, deletedStatus);
-            return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            if (hiveId < 1)
+            {
+                return BadRequest($"Argument {nameof(hiveId)} must be greater than zero.");
+            }
+
+            try
+            {
+                await _hiveService.SetStatusAsync(hiveId, deletedStatus);
+                return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         [HttpPost]
@@ -76,17 +114,24 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.BadRequest)]
         [SwaggerResponse(HttpStatusCode.Conflict)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> AddHive([FromBody] UpdateHiveRequest createRequest)
+        public async Task<IHttpActionResult> AddHiveAsync([FromBody] UpdateHiveRequest createRequest)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var hive = await _hiveService.CreateHiveAsync(createRequest);
-            var location = $"/api/hives/{hive.Id}";
+            try
+            {
+                var hive = await _hiveService.CreateHiveAsync(createRequest);
+                var location = $"/api/hives/{hive.Id}";
 
-            return Created<Hive>(location, hive);
+                return Created<Hive>(location, hive);
+            }
+            catch (RequestedResourceHasConflictException)
+            {
+                return Conflict();
+            }
         }
 
         [HttpPut]
@@ -96,15 +141,31 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.Conflict)]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> UpdateHive([FromUri] int id, [FromBody] UpdateHiveRequest updateRequest)
+        public async Task<IHttpActionResult> UpdateHiveAsync([FromUri] int id, [FromBody] UpdateHiveRequest updateRequest)
         {
+            if (id < 1)
+            {
+                return BadRequest($"Argument {nameof(id)} must be greater than zero.");
+            }
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            await _hiveService.UpdateHiveAsync(id, updateRequest);
-            return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            try
+            {
+                await _hiveService.UpdateHiveAsync(id, updateRequest);
+                return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            }
+            catch (RequestedResourceHasConflictException)
+            {
+                return Conflict();
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         [HttpDelete]
@@ -114,10 +175,26 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.Conflict)]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> DeleteHive([FromUri] int id)
+        public async Task<IHttpActionResult> DeleteHiveAsync([FromUri] int id)
         {
-            await this._hiveService.DeleteHiveAsync(id);
-            return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            if (id < 1)
+            {
+                return BadRequest($"Argument {nameof(id)} must be greater than zero.");
+            }
+
+            try
+            {
+                await _hiveService.DeleteHiveAsync(id);
+                return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            }
+            catch (RequestedResourceHasConflictException)
+            {
+                return Conflict();
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
     }
 }

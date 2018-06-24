@@ -11,6 +11,8 @@ using Swashbuckle.Swagger.Annotations;
 
 namespace KatlaSport.WebApi.Controllers
 {
+    using KatlaSport.Services;
+
     [ApiVersion("1.0")]
     [RoutePrefix("api/products")]
     [EnableCors(origins: "*", headers: "*", methods: "*")]
@@ -30,7 +32,7 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.OK, Description = "Returns a list of products.", Type = typeof(ProductListItem[]))]
         [SwaggerResponse(HttpStatusCode.BadRequest)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> GetProducts([FromUri] int start = 0, [FromUri] int amount = 100)
+        public async Task<IHttpActionResult> GetProductsAsync([FromUri] int start = 0, [FromUri] int amount = 100)
         {
             if (start < 0)
             {
@@ -50,10 +52,22 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.OK, Description = "Returns a product.", Type = typeof(Product))]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> GetProduct([FromUri] int id)
+        public async Task<IHttpActionResult> GetProductAsync([FromUri] int id)
         {
-            var product = await _productService.GetProductAsync(id);
-            return Ok(product);
+            if (id < 1)
+            {
+                return BadRequest($"Argument {nameof(id)} must be greater than zero.");
+            }
+
+            try
+            {
+                var product = await _productService.GetProductAsync(id);
+                return Ok(product);
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         [HttpPost]
@@ -62,16 +76,23 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.BadRequest)]
         [SwaggerResponse(HttpStatusCode.Conflict)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> AddProduct([FromBody] UpdateProductRequest createRequest)
+        public async Task<IHttpActionResult> AddProductAsync([FromBody] UpdateProductRequest createRequest)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            var product = await _productService.CreateProductAsync(createRequest);
-            var location = string.Format("/api/products/{0}", product.Id);
-            return Created<Product>(location, product);
+            try
+            {
+                var product = await _productService.CreateProductAsync(createRequest);
+                var location = string.Format("/api/products/{0}", product.Id);
+                return Created<Product>(location, product);
+            }
+            catch (RequestedResourceHasConflictException)
+            {
+                return Conflict();
+            }
         }
 
         [HttpPut]
@@ -81,15 +102,31 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.Conflict)]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> UpdateProduct([FromUri] int id, [FromBody] UpdateProductRequest updateRequest)
+        public async Task<IHttpActionResult> UpdateProductAsync([FromUri] int id, [FromBody] UpdateProductRequest updateRequest)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
-            await _productService.UpdateProductAsync(id, updateRequest);
-            return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            if (id < 1)
+            {
+                return BadRequest($"Argument {nameof(id)} must be greater than zero.");
+            }
+
+            try
+            {
+                await _productService.UpdateProductAsync(id, updateRequest);
+                return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            }
+            catch (RequestedResourceHasConflictException)
+            {
+                return Conflict();
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         [HttpDelete]
@@ -99,10 +136,26 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.Conflict)]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> DeleteProduct([FromUri] int id)
+        public async Task<IHttpActionResult> DeleteProductAsync([FromUri] int id)
         {
-            await _productService.DeleteProductAsync(id);
-            return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            if (id < 1)
+            {
+                return BadRequest($"Argument {nameof(id)} must be greater than zero.");
+            }
+
+            try
+            {
+                await _productService.DeleteProductAsync(id);
+                return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            }
+            catch (RequestedResourceHasConflictException)
+            {
+                return Conflict();
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
 
         [HttpPut]
@@ -110,10 +163,22 @@ namespace KatlaSport.WebApi.Controllers
         [SwaggerResponse(HttpStatusCode.NoContent, Description = "Sets deleted status for an existed product category.")]
         [SwaggerResponse(HttpStatusCode.NotFound)]
         [SwaggerResponse(HttpStatusCode.InternalServerError)]
-        public async Task<IHttpActionResult> SetStatus([FromUri] int id, [FromUri] bool deletedStatus)
+        public async Task<IHttpActionResult> SetStatusAsync([FromUri] int id, [FromUri] bool deletedStatus)
         {
-            await _productService.SetStatusAsync(id, deletedStatus);
-            return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            if (id < 1)
+            {
+                return BadRequest($"Argument {nameof(id)} must be greater than zero.");
+            }
+
+            try
+            {
+                await _productService.SetStatusAsync(id, deletedStatus);
+                return ResponseMessage(Request.CreateResponse(HttpStatusCode.NoContent));
+            }
+            catch (RequestedResourceNotFoundException)
+            {
+                return NotFound();
+            }
         }
     }
 }
