@@ -31,7 +31,13 @@ namespace KatlaSport.Services.ProductManagement
         /// <inheritdoc/>
         public async Task<List<ProductListItem>> GetProductsAsync(int start, int amount)
         {
-            var dbProducts = await _context.Products.OrderBy(p => p.Id).Skip(start).Take(amount).ToArrayAsync();
+            var dbProducts = await _context.Products
+                                 .OrderBy(p => p.Id)
+                                 .Skip(start)
+                                 .Take(amount)
+                                 .ToArrayAsync()
+                                 .ConfigureAwait(false);
+
             var products = dbProducts.Select(p => Mapper.Map<ProductListItem>(p)).ToList();
 
             return products;
@@ -40,13 +46,22 @@ namespace KatlaSport.Services.ProductManagement
         /// <inheritdoc/>
         public async Task<List<ProductCategoryProductListItem>> GetCategoryProductsAsync(int productCategoryId)
         {
-            var dbCategories = await _context.Categories.Where(p => p.Id == productCategoryId).ToArrayAsync();
+            var dbCategories = await _context.Categories
+                                   .Where(p => p.Id == productCategoryId)
+                                   .ToArrayAsync()
+                                   .ConfigureAwait(false);
+
             if (dbCategories.Length == 0)
             {
                 throw new RequestedResourceNotFoundException();
             }
 
-            var dbProducts = await _context.Products.OrderBy(p => p.Id).Where(p => p.CategoryId == productCategoryId).ToArrayAsync();
+            var dbProducts = await _context.Products
+                                 .OrderBy(p => p.Id)
+                                 .Where(p => p.CategoryId == productCategoryId)
+                                 .ToArrayAsync()
+                                 .ConfigureAwait(false);
+
             var products = dbProducts.Select(p => Mapper.Map<ProductCategoryProductListItem>(p)).ToList();
 
             return products;
@@ -55,7 +70,10 @@ namespace KatlaSport.Services.ProductManagement
         /// <inheritdoc/>
         public async Task<Product> GetProductAsync(int productId)
         {
-            var dbProducts = await _context.Products.Where(p => p.Id == productId).ToArrayAsync();
+            var dbProducts = await _context.Products
+                                 .Where(p => p.Id == productId)
+                                 .ToArrayAsync()
+                                 .ConfigureAwait(false);
 
             if (dbProducts.Length == 0)
             {
@@ -68,7 +86,11 @@ namespace KatlaSport.Services.ProductManagement
         /// <inheritdoc/>
         public async Task<Product> CreateProductAsync(UpdateProductRequest createRequest)
         {
-            var dbProducts = await _context.Products.Where(p => p.Code == createRequest.Code).ToArrayAsync();
+            var dbProducts = await _context.Products
+                                 .Where(p => p.Code == createRequest.Code)
+                                 .ToArrayAsync()
+                                 .ConfigureAwait(false);
+
             if (dbProducts.Length > 0)
             {
                 throw new RequestedResourceHasConflictException("code");
@@ -79,7 +101,7 @@ namespace KatlaSport.Services.ProductManagement
             dbProduct.LastUpdatedBy = _userContext.UserId;
             _context.Products.Add(dbProduct);
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             return Mapper.Map<Product>(dbProduct);
         }
@@ -87,13 +109,21 @@ namespace KatlaSport.Services.ProductManagement
         /// <inheritdoc/>
         public async Task<Product> UpdateProductAsync(int productId, UpdateProductRequest updateRequest)
         {
-            var dbProducts = await _context.Products.Where(p => p.Code == updateRequest.Code && p.Id != productId).ToArrayAsync();
+            var dbProducts = await _context.Products
+                                 .Where(p => p.Code == updateRequest.Code && p.Id != productId)
+                                 .ToArrayAsync()
+                                 .ConfigureAwait(false);
+
             if (dbProducts.Length > 0)
             {
                 throw new RequestedResourceHasConflictException("code");
             }
 
-            dbProducts = await _context.Products.Where(p => p.Id == productId).ToArrayAsync();
+            dbProducts = await _context.Products
+                             .Where(p => p.Id == productId)
+                             .ToArrayAsync()
+                             .ConfigureAwait(false);
+
             if (dbProducts.Length == 0)
             {
                 throw new RequestedResourceNotFoundException();
@@ -104,7 +134,7 @@ namespace KatlaSport.Services.ProductManagement
             Mapper.Map(updateRequest, dbProduct);
             dbProduct.LastUpdatedBy = _userContext.UserId;
 
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
 
             return Mapper.Map<Product>(dbProduct);
         }
@@ -112,7 +142,11 @@ namespace KatlaSport.Services.ProductManagement
         /// <inheritdoc/>
         public async Task DeleteProductAsync(int productId)
         {
-            var products = await _context.Products.Where(p => p.Id == productId).ToArrayAsync();
+            var products = await _context.Products
+                               .Where(p => p.Id == productId)
+                               .ToArrayAsync()
+                               .ConfigureAwait(false);
+
             if (products.Length == 0)
             {
                 throw new RequestedResourceNotFoundException();
@@ -125,13 +159,16 @@ namespace KatlaSport.Services.ProductManagement
             }
 
             _context.Products.Remove(product);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync().ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
         public async Task SetStatusAsync(int productId, bool deletedStatus)
         {
-            var products = await _context.Products.Where(p => productId == p.Id).ToArrayAsync();
+            var products = await _context.Products
+                               .Where(p => productId == p.Id)
+                               .ToArrayAsync()
+                               .ConfigureAwait(false);
 
             if (products.Length == 0)
             {
@@ -144,7 +181,7 @@ namespace KatlaSport.Services.ProductManagement
                 dbCategory.IsDeleted = deletedStatus;
                 dbCategory.LastUpdated = DateTime.UtcNow;
                 dbCategory.LastUpdatedBy = _userContext.UserId;
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync().ConfigureAwait(false);
             }
         }
     }
